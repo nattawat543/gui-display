@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+from sensor_msgs.msg import Imu
+from tf_transformations import *
+import math
+import tkinter as tk
+
+class MyGUI(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+
+     
+        self.label = tk.Label(self, text="Waiting for message...")
+        self.label.pack()
+
+      
+        self.node = Node('gui_node')
+        self.subscription = self.node.create_subscription(
+        	Imu,
+        	"/imu/data",
+        	self.callback,
+        	10)
+
+    def callback(self, msg):
+    	orientation_q = msg.orientation
+    	orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+    	(r, p, y) = euler_from_quaternion(orientation_list)
+    	(self.roll, self.pitch, self.yaw) =(r*(180/math.pi), p*(180/math.pi), y*(180/math.pi))
+    	
+    	self.label.config(text="Received message: " + str(self.roll))
+
+def main(arg=None):
+    rclpy.init(args=args)
+
+    root = tk.Tk()
+    gui = MyGUI(root)
+    gui.pack()
+
+    rclpy.spin(gui.node)
+
+    gui.node.destroy_node()
+    rclpy.shutdown()
+    root.destroy()
+    
+if __name__ == '__main__':
+	main()
+

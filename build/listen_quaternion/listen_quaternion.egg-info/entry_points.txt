@@ -1,0 +1,4 @@
+[console_scripts]
+display = listen_quaternion.quaternion:main
+display2 = listen_quaternion.gui:main
+

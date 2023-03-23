@@ -1,0 +1,66 @@
+import tkinter as tk
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Imu
+from std_msgs.msg import String
+from tf_transformations import *
+import math
+from threading import Thread
+
+class ImuSubscriber(Node):
+    def __init__(self,roll_var,pitch_var,yaw_var):
+        super().__init__('imu_subscriber')
+        self.subscription = self.create_subscription(
+            Imu,
+            '/imu/data',
+            self.listener_callback,
+            10
+        )
+        self.roll_var = roll_var
+        self.pitch_var = pitch_var
+        self.yaw_var = yaw_var
+        
+    def listener_callback(self, msg):
+        # Update GUI variables
+        self.roll_var.set(msg.orientation.x)
+        self.pitch_var.set(msg.orientation.y)
+        self.yaw_var.set(msg.orientation.z)
+
+def create_gui():
+    global roll_var
+    global pitch_var
+    global yaw_var
+    roll_label = tk.Label(root, text="Roll:")
+    roll_label.grid(row=0, column=0)
+    roll_value = tk.Label(root, textvariable=roll_var)
+    roll_value.grid(row=0, column=1)
+    
+    pitch_label = tk.Label(root, text="Pitch:")
+    pitch_label.grid(row=1, column=0)
+    pitch_value = tk.Label(root, textvariable=pitch_var)
+    pitch_value.grid(row=1, column=1)
+    
+    yaw_label = tk.Label(root, text="Yaw:")
+    yaw_label.grid(row=2, column=0)
+    yaw_value = tk.Label(root, textvariable=yaw_var)
+    yaw_value.grid(row=2, column=1)
+    root.mainloop()        
+        
+
+def main(args=None):
+    rclpy.init(args=args)
+    root = tk.Tk()
+    roll_var = tk.StringVar()
+    pitch_var = tk.StringVar()
+    yaw_var = tk.StringVar()
+    imu_subscriber = ImuSubscriber(roll_var,pitch_var,yaw_var)
+    spin = Thread(target=rclpy.spin(imu_subscriber))
+    gui = Thread(target=create_gui, args=[root])
+    spin.start()
+    gui.start()    
+    imu_subscriber.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+  

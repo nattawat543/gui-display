@@ -1,0 +1,77 @@
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+from sensor_msgs.msg import Imu
+import threading
+import tkinter as tk
+import math
+from tf_transformations import *
+
+class SubscriberThread(threading.Thread):
+    def __init__(self, node):
+        super().__init__()
+        self.node = node
+        self.roll = 0
+        self.pitch = 0
+        self.yaw = 0
+
+    def run(self):
+        def callback(msg):
+        	orientation_q = msg.orientation
+        	orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        	(r, p, y) = euler_from_quaternion(orientation_list)
+        	(self.roll, self.pitch, self.yaw) =(r*(180/math.pi), p*(180/math.pi), y*(180/math.pi))
+
+        sub = self.node.create_subscription(
+            Imu, '/imu/data', callback, 10)
+
+        while rclpy.ok():
+            rclpy.spin_once(self.node)
+
+    def get_rpy(self):
+        return self.roll, self.pitch, self.yaw
+
+class GUI(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title('IMU Data')
+        self.geometry('800x800')
+        self.roll_label = tk.Label(self, text='Roll: 0')
+        self.roll_label.config(font=('Tahoma',30),width=10)
+        self.roll_label.place(relx=400,rely= 50)
+        self.roll_label.pack()
+        self.pitch_label = tk.Label(self, text='Pitch: 0')
+        self.pitch_label.config(font=('Tahoma',30),width=10)
+        self.pitch_label.pack()
+        self.yaw_label = tk.Label(self, text='Yaw: 0')
+        self.yaw_label.config(font=('Tahoma',30),width=10)
+        self.yaw_label.pack()
+
+    def update_labels(self, roll, pitch, yaw):
+        self.roll_label.configure(text=f'Roll: {roll:.2f}')
+        self.pitch_label.configure(text=f'Pitch: {pitch:.2f}')
+        self.yaw_label.configure(text=f'Yaw: {yaw:.2f}')
+
+def main():
+    rclpy.init()
+
+    node = Node('imu_subscriber')
+    thread = SubscriberThread(node)
+    thread.start()
+
+    gui = GUI()
+
+    def update_gui_labels():
+        roll, pitch, yaw = thread.get_rpy()
+        gui.update_labels(roll, pitch, yaw)
+        gui.after(100, update_gui_labels)
+
+    gui.after(100, update_gui_labels)
+    gui.mainloop()
+
+    thread.join()
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
